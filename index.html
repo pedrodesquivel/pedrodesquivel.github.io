@@ -31,40 +31,24 @@
 </head>
 <body class="text-gray-800">
 
-    <!-- Configuração da API do Google Sheets -->
-    <div id="configModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center hidden">
-        <div class="bg-white p-6 rounded-xl w-full max-w-lg">
-            <h2 class="text-xl font-bold mb-4">Configurar Banco de Dados (Google Sheets)</h2>
-            <p class="text-sm text-gray-600 mb-4">Cole aqui a URL do seu Google Apps Script para conectar a sua planilha. Se deixar em branco, o site usará dados de teste salvos no navegador.</p>
-            <input type="text" id="apiUrlInput" placeholder="https://script.google.com/macros/s/.../exec" class="w-full p-2 border border-gray-300 rounded-lg mb-4">
-            <div class="flex justify-end gap-2">
-                <button onclick="closeConfig()" class="px-4 py-2 bg-gray-200 rounded-lg">Cancelar</button>
-                <button onclick="saveConfig()" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Salvar Conexão</button>
-            </div>
-        </div>
-    </div>
-
     <!-- Barra de Navegação -->
     <nav class="bg-white shadow-sm border-b border-gray-200 px-6 py-4 flex justify-between items-center">
         <div class="flex items-center gap-2 text-blue-600">
             <i class="fas fa-wallet text-2xl"></i>
             <h1 class="text-xl font-bold">Finanças<span class="text-gray-800">Pro</span></h1>
         </div>
-        <button onclick="openConfig()" class="text-gray-500 hover:text-blue-600 transition" title="Configurar Planilha">
-            <i class="fas fa-cog text-xl"></i>
-        </button>
+        <!-- Removido o botão de configurações, a URL agora é fixa no código -->
     </nav>
 
     <!-- Conteúdo Principal -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
-        <!-- Indicador de Status -->
-        <div id="connectionStatus" class="mb-6 text-sm flex items-center gap-2 text-orange-600 bg-orange-50 p-3 rounded-lg border border-orange-200">
-            <i class="fas fa-info-circle"></i>
-            <span>Modo Local: Os dados estão sendo salvos apenas no navegador. Configure o link do Google Sheets na engrenagem acima.</span>
+        <!-- Indicador de Estado -->
+        <div id="connectionStatus" class="mb-6 text-sm flex items-center gap-2 p-3 rounded-lg border">
+            <!-- Preenchido via JavaScript -->
         </div>
 
-        <!-- Cards de Resumo -->
+        <!-- Cartões de Resumo -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div class="glass-card p-6 border-t-4 border-blue-500">
                 <div class="flex justify-between items-center mb-4">
@@ -99,11 +83,11 @@
                     <form id="transactionForm" class="space-y-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
-                            <input type="text" id="desc" required class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ex: Salário, Mercado...">
+                            <input type="text" id="desc" required class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ex: Salário, Supermercado...">
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Valor</label>
                                 <input type="number" id="amount" step="0.01" required class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="0.00">
                             </div>
                             <div>
@@ -168,7 +152,7 @@
                             </tbody>
                         </table>
                     </div>
-                    <!-- Empty State -->
+                    <!-- Estado Vazio -->
                     <div id="emptyState" class="text-center py-10 hidden">
                         <i class="fas fa-receipt text-4xl text-gray-300 mb-3"></i>
                         <p class="text-gray-500">Nenhuma transação registrada ainda.</p>
@@ -180,14 +164,17 @@
 
     <script>
         // ==========================================
+        // CONFIGURAÇÃO DO GOOGLE SHEETS
+        // ==========================================
+        // ⚠️ COLE AQUI A SUA URL GERADA NO PASSO 3 DO GUIA:
+        const GOOGLE_SHEETS_API_URL = 'https://script.google.com/macros/s/AKfycbzWUDDgswIVJp7I3NYuif93Q7yQYm2JEKNxLGSaiLBetXweOGbF30SaHyrG34ee_ayi/exec'; 
+
+        // ==========================================
         // ESTADO DA APLICAÇÃO
         // ==========================================
         let transactions = [];
         let chartInstance = null;
         
-        // URL da sua API do Google Sheets (salva no localStorage)
-        let GOOGLE_SHEETS_API_URL = localStorage.getItem('googleSheetsApiUrl') || '';
-
         // Elementos DOM
         const form = document.getElementById('transactionForm');
         const listEl = document.getElementById('transactionList');
@@ -195,7 +182,7 @@
         const submitLoader = document.getElementById('submitLoader');
         const tableLoader = document.getElementById('tableLoader');
 
-        // Configura data padrão para hoje
+        // Configura a data padrão para hoje
         document.getElementById('date').valueAsDate = new Date();
 
         // ==========================================
@@ -206,14 +193,18 @@
             await fetchData();
         }
 
+        function isUrlConfigured() {
+            return GOOGLE_SHEETS_API_URL && GOOGLE_SHEETS_API_URL.startsWith('https://script.google.com/');
+        }
+
         function updateConnectionStatus() {
             const statusDiv = document.getElementById('connectionStatus');
-            if (GOOGLE_SHEETS_API_URL) {
+            if (isUrlConfigured()) {
                 statusDiv.className = 'mb-6 text-sm flex items-center gap-2 text-green-700 bg-green-50 p-3 rounded-lg border border-green-200';
-                statusDiv.innerHTML = '<i class="fas fa-check-circle"></i><span>Conectado ao Google Sheets. Seus dados estão sincronizados na nuvem.</span>';
+                statusDiv.innerHTML = '<i class="fas fa-check-circle"></i><span>Conectado ao Google Sheets. Seus dados estão sendo salvos na nuvem em tempo real.</span>';
             } else {
                 statusDiv.className = 'mb-6 text-sm flex items-center gap-2 text-orange-700 bg-orange-50 p-3 rounded-lg border border-orange-200';
-                statusDiv.innerHTML = '<i class="fas fa-info-circle"></i><span>Modo Local: Os dados estão sendo salvos apenas no navegador. Configure o Google Sheets na engrenagem.</span>';
+                statusDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i><span><strong>Aviso:</strong> A URL do Google Sheets não foi configurada no código. Os dados estão sendo salvos apenas temporariamente no navegador. Edite o arquivo HTML para adicionar o seu link.</span>';
             }
         }
 
@@ -223,7 +214,7 @@
         async function fetchData() {
             tableLoader.style.display = 'block';
             
-            if (GOOGLE_SHEETS_API_URL) {
+            if (isUrlConfigured()) {
                 try {
                     const response = await fetch(GOOGLE_SHEETS_API_URL);
                     const result = await response.json();
@@ -231,11 +222,11 @@
                         transactions = result.data;
                     }
                 } catch (error) {
-                    console.error("Erro ao buscar dados do Google Sheets:", error);
-                    alert("Erro ao carregar dados da planilha. Verifique o link.");
+                    console.error("Erro ao obter dados do Google Sheets:", error);
+                    alert("Erro ao carregar dados da planilha. Verifique o link inserido no código.");
                 }
             } else {
-                // Fallback LocalStorage
+                // Alternativa LocalStorage (apenas para testes se não colocar a hiperligação)
                 const localData = localStorage.getItem('finance_transactions');
                 transactions = localData ? JSON.parse(localData) : [];
             }
@@ -245,7 +236,7 @@
         }
 
         async function saveTransactionToDB(transaction) {
-            if (GOOGLE_SHEETS_API_URL) {
+            if (isUrlConfigured()) {
                 try {
                     // O Google Apps Script exige POST usando text/plain para evitar problemas de CORS no frontend
                     const response = await fetch(GOOGLE_SHEETS_API_URL, {
@@ -259,14 +250,14 @@
                     return false;
                 }
             } else {
-                // Fallback LocalStorage
+                // Alternativa LocalStorage
                 localStorage.setItem('finance_transactions', JSON.stringify(transactions));
                 return true;
             }
         }
 
         async function deleteTransactionFromDB(id) {
-            if (GOOGLE_SHEETS_API_URL) {
+            if (isUrlConfigured()) {
                 try {
                     const response = await fetch(GOOGLE_SHEETS_API_URL, {
                         method: 'POST',
@@ -275,11 +266,11 @@
                     const result = await response.json();
                     return result.status === 'success';
                 } catch (error) {
-                    console.error("Erro ao deletar no Google Sheets:", error);
+                    console.error("Erro ao excluir no Google Sheets:", error);
                     return false;
                 }
             } else {
-                // Fallback LocalStorage
+                // Alternativa LocalStorage
                 localStorage.setItem('finance_transactions', JSON.stringify(transactions));
                 return true;
             }
@@ -301,17 +292,17 @@
                 date: document.getElementById('date').value
             };
 
-            // Otimista: Adiciona na interface antes
+            // Otimista: Adiciona na interface antes de terminar de guardar
             transactions.push(newTransaction);
             updateUI();
             
-            // Salva no banco
+            // Guarda na base de dados
             const success = await saveTransactionToDB(newTransaction);
             if(!success) {
                 // Reverte se falhou
                 transactions = transactions.filter(t => t.id !== newTransaction.id);
                 updateUI();
-                alert("Falha ao salvar transação.");
+                alert("Falha ao salvar a transação.");
             } else {
                 form.reset();
                 document.getElementById('date').valueAsDate = new Date();
@@ -324,21 +315,21 @@
         // LÓGICA DE EXCLUSÃO
         // ==========================================
         async function removeTransaction(id) {
-            if(!confirm("Tem certeza que deseja excluir?")) return;
+            if(!confirm("Tem certeza que deseja excluir esta transação?")) return;
             
-            // Otimista: remove da interface
+            // Otimista: remove da interface primeiro
             const transactionIndex = transactions.findIndex(t => t.id === id);
             const transactionBackup = transactions[transactionIndex];
             transactions.splice(transactionIndex, 1);
             updateUI();
 
-            // Deleta no banco
+            // Elimina na base de dados
             const success = await deleteTransactionFromDB(id);
             if(!success) {
                 // Reverte se falhou
                 transactions.splice(transactionIndex, 0, transactionBackup);
                 updateUI();
-                alert("Falha ao excluir transação.");
+                alert("Falha ao excluir a transação.");
             }
         }
 
@@ -449,27 +440,7 @@
             });
         }
 
-        // ==========================================
-        // CONFIGURAÇÃO (MODAL)
-        // ==========================================
-        function openConfig() {
-            document.getElementById('apiUrlInput').value = GOOGLE_SHEETS_API_URL;
-            document.getElementById('configModal').classList.remove('hidden');
-        }
-
-        function closeConfig() {
-            document.getElementById('configModal').classList.add('hidden');
-        }
-
-        function saveConfig() {
-            const newUrl = document.getElementById('apiUrlInput').value.trim();
-            GOOGLE_SHEETS_API_URL = newUrl;
-            localStorage.setItem('googleSheetsApiUrl', newUrl);
-            closeConfig();
-            init(); // Recarrega os dados com a nova URL
-        }
-
-        // Inicia o app
+        // Inicia a aplicação
         init();
 
     </script>
