@@ -19,7 +19,7 @@
             border-top: 3px solid #3b82f6;
             width: 20px;
             height: 20px;
-            -webkit-animation: spin 1s linear infinite; /* Safari */
+            -webkit-animation: spin 1s linear infinite;
             animation: spin 1s linear infinite;
             display: none;
         }
@@ -27,9 +27,34 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        
+        /* Modal Animation */
+        .modal-enter { animation: fadeIn 0.2s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
     </style>
 </head>
 <body class="text-gray-800">
+
+    <!-- Modal de Categorias -->
+    <div id="categoryModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+        <div class="bg-white p-6 rounded-xl w-full max-w-md modal-enter">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">Gerenciar Categorias</h2>
+                <button onclick="closeCategoryModal()" class="text-gray-500 hover:text-red-500"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <div class="flex gap-2 mb-4">
+                <input type="text" id="newCategoryInput" placeholder="Nova categoria..." class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                <button onclick="addCategory()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 rounded-lg transition"><i class="fas fa-plus"></i></button>
+            </div>
+
+            <div class="max-h-60 overflow-y-auto pr-2">
+                <ul id="categoryListModal" class="space-y-2">
+                    <!-- Preenchido via JS -->
+                </ul>
+            </div>
+        </div>
+    </div>
 
     <!-- Barra de Navegação -->
     <nav class="bg-white shadow-sm border-b border-gray-200 px-6 py-4 flex justify-between items-center">
@@ -37,7 +62,6 @@
             <i class="fas fa-wallet text-2xl"></i>
             <h1 class="text-xl font-bold">Finanças<span class="text-gray-800">Pro</span></h1>
         </div>
-        <!-- Removido o botão de configurações, a URL agora é fixa no código -->
     </nav>
 
     <!-- Conteúdo Principal -->
@@ -78,45 +102,74 @@
             <!-- Coluna Esquerda: Formulário e Gráfico -->
             <div class="space-y-8">
                 <!-- Formulário de Nova Transação -->
-                <div class="glass-card p-6">
-                    <h3 class="text-lg font-bold mb-4 border-b pb-2">Nova Transação</h3>
+                <div class="glass-card p-6 relative">
+                    <!-- Overlay de Loading para salvamento múltiplo -->
+                    <div id="batchLoadingOverlay" class="absolute inset-0 bg-white bg-opacity-80 z-10 hidden flex-col items-center justify-center rounded-xl">
+                        <div class="loader border-t-blue-600 mb-2" style="display: block; width: 40px; height: 40px; border-width: 4px;"></div>
+                        <p id="batchLoadingText" class="text-blue-600 font-medium">Processando...</p>
+                    </div>
+
+                    <div class="flex justify-between items-center mb-4 border-b pb-2">
+                        <h3 class="text-lg font-bold" id="formTitle">Nova Transação</h3>
+                        <button type="button" id="cancelEditBtn" onclick="cancelEdit()" class="text-sm text-red-500 hover:text-red-700 hidden">
+                            Cancelar Edição
+                        </button>
+                    </div>
+                    
                     <form id="transactionForm" class="space-y-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
-                            <input type="text" id="desc" required class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ex: Salário, Supermercado...">
+                            <input type="text" id="desc" required class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ex: Salário, Aluguel, Supermercado...">
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Valor</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Valor Unitário</label>
                                 <input type="number" id="amount" step="0.01" required class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="0.00">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
                                 <select id="type" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
-                                    <option value="income">Entrada</option>
                                     <option value="expense">Saída</option>
+                                    <option value="income">Entrada</option>
                                 </select>
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+                                <div class="flex justify-between items-center mb-1">
+                                    <label class="block text-sm font-medium text-gray-700">Categoria</label>
+                                    <button type="button" onclick="openCategoryModal()" class="text-blue-600 hover:text-blue-800 text-xs" title="Gerenciar Categorias">
+                                        <i class="fas fa-cog"></i> Editar
+                                    </button>
+                                </div>
                                 <select id="category" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
-                                    <option value="Salário">Salário</option>
-                                    <option value="Alimentação">Alimentação</option>
-                                    <option value="Transporte">Transporte</option>
-                                    <option value="Lazer">Lazer</option>
-                                    <option value="Contas">Contas Fixas</option>
-                                    <option value="Outros">Outros</option>
+                                    <!-- Preenchido via JS -->
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Data</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Data Inicial</label>
                                 <input type="date" id="date" required class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
                             </div>
                         </div>
-                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition flex justify-center items-center gap-2">
-                            <span>Adicionar Transação</span>
+
+                        <!-- Opção de Repetição (Parcelas) -->
+                        <div id="recurringWrapper" class="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                            <label class="flex items-center gap-2 cursor-pointer mb-2">
+                                <input type="checkbox" id="isRecurring" class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500">
+                                <span class="text-sm font-medium text-gray-700">Repetir transação (Mensal / Parcelas)</span>
+                            </label>
+                            
+                            <div id="recurringOptions" class="hidden pl-6 pt-2 border-t border-gray-200 mt-2">
+                                <label class="block text-sm text-gray-600 mb-1">Número de ocorrências (Meses):</label>
+                                <div class="flex items-center gap-2">
+                                    <input type="number" id="installmentsCount" min="2" max="120" value="2" class="w-24 p-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none text-center">
+                                    <span class="text-xs text-gray-500">Ex: 12 para um ano.</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="submit" id="submitBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition flex justify-center items-center gap-2">
+                            <span id="submitBtnText">Adicionar Transação</span>
                             <div id="submitLoader" class="loader border-t-white"></div>
                         </button>
                     </form>
@@ -144,7 +197,7 @@
                                     <th class="pb-3 font-medium">Descrição</th>
                                     <th class="pb-3 font-medium">Categoria</th>
                                     <th class="pb-3 font-medium text-right">Valor</th>
-                                    <th class="pb-3 font-medium text-center">Ação</th>
+                                    <th class="pb-3 font-medium text-center">Ações</th>
                                 </tr>
                             </thead>
                             <tbody id="transactionList" class="text-sm">
@@ -174,22 +227,39 @@
         // ==========================================
         let transactions = [];
         let chartInstance = null;
+        let editingId = null; // Guarda o ID da transação sendo editada
         
+        // Categorias Padrão vs Customizadas
+        const defaultCategories = ["Salário", "Alimentação", "Transporte", "Lazer", "Contas Fixas", "Saúde", "Educação", "Outros"];
+        let categories = JSON.parse(localStorage.getItem('finance_categories')) || defaultCategories;
+
         // Elementos DOM
         const form = document.getElementById('transactionForm');
         const listEl = document.getElementById('transactionList');
         const emptyState = document.getElementById('emptyState');
         const submitLoader = document.getElementById('submitLoader');
         const tableLoader = document.getElementById('tableLoader');
+        const categorySelect = document.getElementById('category');
 
         // Configura a data padrão para hoje
         document.getElementById('date').valueAsDate = new Date();
+
+        // Lógica de Repetição (UI)
+        document.getElementById('isRecurring').addEventListener('change', (e) => {
+            const options = document.getElementById('recurringOptions');
+            if(e.target.checked) {
+                options.classList.remove('hidden');
+            } else {
+                options.classList.add('hidden');
+            }
+        });
 
         // ==========================================
         // INICIALIZAÇÃO
         // ==========================================
         async function init() {
             updateConnectionStatus();
+            renderCategoryOptions();
             await fetchData();
         }
 
@@ -204,33 +274,77 @@
                 statusDiv.innerHTML = '<i class="fas fa-check-circle"></i><span>Conectado ao Google Sheets. Seus dados estão sendo salvos na nuvem em tempo real.</span>';
             } else {
                 statusDiv.className = 'mb-6 text-sm flex items-center gap-2 text-orange-700 bg-orange-50 p-3 rounded-lg border border-orange-200';
-                statusDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i><span><strong>Aviso:</strong> A URL do Google Sheets não foi configurada no código. Os dados estão sendo salvos apenas temporariamente no navegador. Edite o arquivo HTML para adicionar o seu link.</span>';
+                statusDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i><span><strong>Aviso:</strong> A URL do Google Sheets não foi configurada. Dados salvos apenas no navegador. Edite o código para conectar.</span>';
             }
         }
 
         // ==========================================
-        // COMUNICAÇÃO COM GOOGLE SHEETS OU LOCAL
+        // GESTÃO DE CATEGORIAS
+        // ==========================================
+        function renderCategoryOptions() {
+            // Atualiza o Select principal
+            categorySelect.innerHTML = '';
+            categories.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat;
+                option.textContent = cat;
+                categorySelect.appendChild(option);
+            });
+
+            // Atualiza a lista do Modal
+            const listModal = document.getElementById('categoryListModal');
+            listModal.innerHTML = '';
+            categories.forEach(cat => {
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center p-2 bg-gray-50 rounded border border-gray-100';
+                li.innerHTML = `
+                    <span class="text-sm font-medium text-gray-700">${cat}</span>
+                    <button onclick="removeCategory('${cat}')" class="text-red-400 hover:text-red-600"><i class="fas fa-trash-alt"></i></button>
+                `;
+                listModal.appendChild(li);
+            });
+        }
+
+        function openCategoryModal() { document.getElementById('categoryModal').classList.remove('hidden'); }
+        function closeCategoryModal() { document.getElementById('categoryModal').classList.add('hidden'); }
+
+        function addCategory() {
+            const input = document.getElementById('newCategoryInput');
+            const newCat = input.value.trim();
+            if(newCat && !categories.includes(newCat)) {
+                categories.push(newCat);
+                localStorage.setItem('finance_categories', JSON.stringify(categories));
+                input.value = '';
+                renderCategoryOptions();
+            }
+        }
+
+        function removeCategory(catName) {
+            if(confirm(`Deseja remover a categoria "${catName}"?`)) {
+                categories = categories.filter(c => c !== catName);
+                localStorage.setItem('finance_categories', JSON.stringify(categories));
+                renderCategoryOptions();
+            }
+        }
+
+        // ==========================================
+        // COMUNICAÇÃO COM BD (READ, CREATE, DELETE)
         // ==========================================
         async function fetchData() {
             tableLoader.style.display = 'block';
-            
             if (isUrlConfigured()) {
                 try {
                     const response = await fetch(GOOGLE_SHEETS_API_URL);
                     const result = await response.json();
-                    if(result.status === 'success') {
-                        transactions = result.data;
-                    }
+                    if(result.status === 'success') { transactions = result.data; }
                 } catch (error) {
-                    console.error("Erro ao obter dados do Google Sheets:", error);
-                    alert("Erro ao carregar dados da planilha. Verifique o link inserido no código.");
+                    console.error("Erro:", error);
+                    alert("Erro ao carregar dados da planilha.");
                 }
             } else {
-                // Alternativa LocalStorage (apenas para testes se não colocar a hiperligação)
                 const localData = localStorage.getItem('finance_transactions');
                 transactions = localData ? JSON.parse(localData) : [];
             }
-            
             tableLoader.style.display = 'none';
             updateUI();
         }
@@ -238,19 +352,14 @@
         async function saveTransactionToDB(transaction) {
             if (isUrlConfigured()) {
                 try {
-                    // O Google Apps Script exige POST usando text/plain para evitar problemas de CORS no frontend
                     const response = await fetch(GOOGLE_SHEETS_API_URL, {
                         method: 'POST',
                         body: JSON.stringify({ action: 'add', data: transaction })
                     });
                     const result = await response.json();
                     return result.status === 'success';
-                } catch (error) {
-                    console.error("Erro ao salvar no Google Sheets:", error);
-                    return false;
-                }
+                } catch (error) { return false; }
             } else {
-                // Alternativa LocalStorage
                 localStorage.setItem('finance_transactions', JSON.stringify(transactions));
                 return true;
             }
@@ -265,51 +374,153 @@
                     });
                     const result = await response.json();
                     return result.status === 'success';
-                } catch (error) {
-                    console.error("Erro ao excluir no Google Sheets:", error);
-                    return false;
-                }
+                } catch (error) { return false; }
             } else {
-                // Alternativa LocalStorage
                 localStorage.setItem('finance_transactions', JSON.stringify(transactions));
                 return true;
             }
         }
 
         // ==========================================
-        // LÓGICA DO FORMULÁRIO
+        // LÓGICA DE FORMULÁRIO (ADD / EDIT / PARCELAS)
         // ==========================================
+        
+        // Função auxiliar para somar meses a uma data corretamente
+        function addMonths(dateString, monthsToAdd) {
+            const d = new Date(dateString + 'T12:00:00'); // T12 previne bugs de fuso horário
+            d.setMonth(d.getMonth() + monthsToAdd);
+            return d.toISOString().split('T')[0];
+        }
+
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            submitLoader.style.display = 'inline-block';
-
-            const newTransaction = {
-                id: Date.now().toString(),
-                desc: document.getElementById('desc').value,
-                amount: parseFloat(document.getElementById('amount').value),
-                type: document.getElementById('type').value,
-                category: document.getElementById('category').value,
-                date: document.getElementById('date').value
-            };
-
-            // Otimista: Adiciona na interface antes de terminar de guardar
-            transactions.push(newTransaction);
-            updateUI();
             
-            // Guarda na base de dados
-            const success = await saveTransactionToDB(newTransaction);
-            if(!success) {
-                // Reverte se falhou
-                transactions = transactions.filter(t => t.id !== newTransaction.id);
+            const descInput = document.getElementById('desc').value;
+            const amountInput = parseFloat(document.getElementById('amount').value);
+            const typeInput = document.getElementById('type').value;
+            const categoryInput = document.getElementById('category').value;
+            const dateInput = document.getElementById('date').value;
+            
+            const isRecurring = document.getElementById('isRecurring').checked;
+            const installments = isRecurring ? parseInt(document.getElementById('installmentsCount').value) : 1;
+
+            // BLOCO DE EDIÇÃO
+            if (editingId) {
+                submitLoader.style.display = 'inline-block';
+                const updatedTransaction = {
+                    id: editingId, // Mantém o ID
+                    desc: descInput, amount: amountInput, type: typeInput, category: categoryInput, date: dateInput
+                };
+
+                // Atualização otimista na interface
+                const index = transactions.findIndex(t => t.id === editingId);
+                const oldBackup = transactions[index];
+                transactions[index] = updatedTransaction;
                 updateUI();
-                alert("Falha ao salvar a transação.");
+
+                // Truque: Como o Google Sheets original só tem Add e Delete, simulamos o Edit!
+                const delSuccess = await deleteTransactionFromDB(editingId);
+                let saveSuccess = false;
+                if(delSuccess) { saveSuccess = await saveTransactionToDB(updatedTransaction); }
+
+                if(!saveSuccess) {
+                    transactions[index] = oldBackup; // Reverte erro
+                    updateUI();
+                    alert("Falha ao editar a transação na base de dados.");
+                }
+
+                cancelEdit();
+                submitLoader.style.display = 'none';
+                return;
+            }
+
+            // BLOCO DE CRIAÇÃO (Única ou Múltipla/Parcelada)
+            const overlay = document.getElementById('batchLoadingOverlay');
+            const overlayText = document.getElementById('batchLoadingText');
+            
+            if(installments > 1) {
+                overlay.classList.remove('hidden');
+                overlay.classList.add('flex');
+            } else {
+                submitLoader.style.display = 'inline-block';
+            }
+
+            let allSuccess = true;
+
+            for(let i = 0; i < installments; i++) {
+                if(installments > 1) overlayText.innerText = `Salvando parcela ${i+1} de ${installments}...`;
+
+                const iterationDate = addMonths(dateInput, i);
+                const descSuffix = installments > 1 ? ` (${i+1}/${installments})` : '';
+
+                const newTransaction = {
+                    id: Date.now().toString() + '-' + i, // ID Único
+                    desc: descInput + descSuffix,
+                    amount: amountInput,
+                    type: typeInput,
+                    category: categoryInput,
+                    date: iterationDate
+                };
+
+                transactions.push(newTransaction);
+                updateUI(); // Atualiza tela a cada inserção
+
+                const success = await saveTransactionToDB(newTransaction);
+                if(!success) {
+                    allSuccess = false;
+                    transactions = transactions.filter(t => t.id !== newTransaction.id);
+                    updateUI();
+                    break; // Interrompe se houver erro grave
+                }
+            }
+
+            if(!allSuccess) {
+                alert("Ocorreu um erro ao salvar algumas transações. Verifique sua conexão.");
             } else {
                 form.reset();
                 document.getElementById('date').valueAsDate = new Date();
+                document.getElementById('recurringOptions').classList.add('hidden');
             }
 
+            overlay.classList.add('hidden');
+            overlay.classList.remove('flex');
             submitLoader.style.display = 'none';
         });
+
+        // ==========================================
+        // LÓGICA DE EDIÇÃO (PREPARAR FORM)
+        // ==========================================
+        function startEdit(id) {
+            const t = transactions.find(t => t.id === id);
+            if(!t) return;
+
+            editingId = id;
+            document.getElementById('desc').value = t.desc;
+            document.getElementById('amount').value = t.amount;
+            document.getElementById('type').value = t.type;
+            document.getElementById('category').value = t.category;
+            document.getElementById('date').value = t.date;
+
+            // UI Adjustments
+            document.getElementById('formTitle').innerText = "Editar Transação";
+            document.getElementById('submitBtnText').innerText = "Atualizar Transação";
+            document.getElementById('cancelEditBtn').classList.remove('hidden');
+            document.getElementById('recurringWrapper').classList.add('hidden'); // Desabilita parcelar na edição
+
+            // Scroll para o form
+            document.getElementById('transactionForm').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function cancelEdit() {
+            editingId = null;
+            form.reset();
+            document.getElementById('date').valueAsDate = new Date();
+            
+            document.getElementById('formTitle').innerText = "Nova Transação";
+            document.getElementById('submitBtnText').innerText = "Adicionar Transação";
+            document.getElementById('cancelEditBtn').classList.add('hidden');
+            document.getElementById('recurringWrapper').classList.remove('hidden');
+        }
 
         // ==========================================
         // LÓGICA DE EXCLUSÃO
@@ -317,16 +528,13 @@
         async function removeTransaction(id) {
             if(!confirm("Tem certeza que deseja excluir esta transação?")) return;
             
-            // Otimista: remove da interface primeiro
             const transactionIndex = transactions.findIndex(t => t.id === id);
             const transactionBackup = transactions[transactionIndex];
             transactions.splice(transactionIndex, 1);
             updateUI();
 
-            // Elimina na base de dados
             const success = await deleteTransactionFromDB(id);
             if(!success) {
-                // Reverte se falhou
                 transactions.splice(transactionIndex, 0, transactionBackup);
                 updateUI();
                 alert("Falha ao excluir a transação.");
@@ -350,7 +558,6 @@
             } else {
                 emptyState.style.display = 'none';
                 
-                // Ordena por data (mais recente primeiro)
                 const sorted = [...transactions].sort((a, b) => new Date(b.date) - new Date(a.date));
 
                 sorted.forEach(t => {
@@ -369,9 +576,14 @@
                         <td class="py-3"><span class="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">${t.category}</span></td>
                         <td class="py-3 text-right font-semibold ${amountClass}">${sign} ${formattedAmount}</td>
                         <td class="py-3 text-center">
-                            <button onclick="removeTransaction('${t.id}')" class="text-red-400 hover:text-red-600 transition" title="Excluir">
-                                <i class="fas fa-trash"></i>
-                            </button>
+                            <div class="flex justify-center gap-3">
+                                <button onclick="startEdit('${t.id}')" class="text-blue-400 hover:text-blue-600 transition" title="Editar">
+                                    <i class="fas fa-pen"></i>
+                                </button>
+                                <button onclick="removeTransaction('${t.id}')" class="text-red-400 hover:text-red-600 transition" title="Excluir">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
                         </td>
                     `;
                     listEl.appendChild(tr);
@@ -389,53 +601,37 @@
             document.getElementById('totalBalance').innerText = balance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
             
             const balanceEl = document.getElementById('totalBalance');
-            if(balance < 0) {
-                balanceEl.classList.add('text-red-600');
-            } else {
-                balanceEl.classList.remove('text-red-600');
-            }
+            if(balance < 0) { balanceEl.classList.add('text-red-600'); } 
+            else { balanceEl.classList.remove('text-red-600'); }
         }
 
         function updateChart() {
             const expenses = transactions.filter(t => t.type === 'expense');
+            const categoriesMap = {};
             
-            // Agrupar por categoria
-            const categories = {};
             expenses.forEach(t => {
-                categories[t.category] = (categories[t.category] || 0) + t.amount;
+                categoriesMap[t.category] = (categoriesMap[t.category] || 0) + t.amount;
             });
 
             const ctx = document.getElementById('expenseChart').getContext('2d');
-            
-            if (chartInstance) {
-                chartInstance.destroy();
-            }
-
-            if(Object.keys(categories).length === 0) return;
+            if (chartInstance) chartInstance.destroy();
+            if(Object.keys(categoriesMap).length === 0) return;
 
             chartInstance = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: Object.keys(categories),
+                    labels: Object.keys(categoriesMap),
                     datasets: [{
-                        data: Object.values(categories),
+                        data: Object.values(categoriesMap),
                         backgroundColor: [
-                            '#ef4444', // red
-                            '#f97316', // orange
-                            '#eab308', // yellow
-                            '#3b82f6', // blue
-                            '#8b5cf6', // purple
-                            '#6b7280'  // gray
+                            '#ef4444', '#f97316', '#eab308', '#3b82f6', '#8b5cf6', '#6b7280', '#10b981', '#ec4899'
                         ],
                         borderWidth: 0
                     }]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'right', labels: { boxWidth: 12 } }
-                    }
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'right', labels: { boxWidth: 12 } } }
                 }
             });
         }
