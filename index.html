@@ -699,10 +699,11 @@
         // ==========================================
         // INTEGRAÇÃO COM GEMINI API (IA)
         // ==========================================
-        const apiKey = ""; // ⚠️ ATENÇÃO: COLE SUA CHAVE DA API AQUI DENTRO DAS ASPAS
+        const apiKey = "AIzaSyCWAtLb_SjIm-kXeqSjZ9mAQt7uwOBcsV8"; // ⚠️ ATENÇÃO: COLE SUA CHAVE DA API AQUI DENTRO DAS ASPAS
         
         async function fetchGeminiWithRetry(payload, maxRetries = 5) {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            // Alterado para o modelo PÚBLICO e GRATUITO do Gemini (gemini-1.5-flash)
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
             const delays = [1000, 2000, 4000, 8000, 16000];
             
             for (let i = 0; i < maxRetries; i++) {
